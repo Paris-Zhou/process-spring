@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.paris.mapper.common.CoreBreakerMapper">
+
+    <select id="getByBreakerCode"
+            resultType="com.paris.pojo.CoreBreakerEntity">
+        select breaker_id as breakerId, breaker_code as breakerCode, protocol from core_breaker where breaker_code in
+        <foreach collection="breakerCodes" item="code" index="index" open="(" separator="," close=")">
+            #{code}
+        </foreach>
+    </select>
+</mapper>

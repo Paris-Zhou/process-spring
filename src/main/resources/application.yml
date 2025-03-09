@@ -1,0 +1,48 @@
+base-ip: 127.0.0.1
+server:
+  port: 9001
+spring:
+  application:
+    name: process-spring
+  redis:
+    client-type: lettuce
+    host: ${base-ip}
+    password: zpp123456
+    port: 6379
+    database: 0
+    # lettuce连接池配置
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 5
+        time-between-eviction-runs: 30s
+        max-wait: 5s
+      shutdown-timeout: 100ms
+customize:
+  datasource:
+    initial-size: 5
+    max-active: 100
+    min-idle: 3
+    max-wait: 60000
+    data-source-map:
+      iot-gateway:
+        driverClassName: com.mysql.cj.jdbc.Driver
+        url: jdbc:mysql://${base-ip}:3306/iot_gateway?allowMultiQueries=true&useSSL=false&useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&zeroDateTimeBehavior=convertToNull&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true
+        username: root
+        password: root
+      nader-common:
+        driverClassName: com.mysql.cj.jdbc.Driver
+        url: jdbc:mysql://${base-ip}:3306/nader4_common?allowMultiQueries=true&useSSL=false&useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&zeroDateTimeBehavior=convertToNull&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true
+        username: root
+        password: root
+      data-center:
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        url: jdbc:mysql://${base-ip}:3306/intelligent_data_center?characterEncoding=utf8&useSSL=false&serverTimezone=UTC&rewriteBatchedStatements=true&allowMultiQueries=true
+        username: root
+        password: N@der2022+1
+      ck:
+        driverClassName: com.clickhouse.jdbc.ClickHouseDriver
+        url: jdbc:clickhouse://${base-ip}:18123
+        username: default
+        password: Nader@123

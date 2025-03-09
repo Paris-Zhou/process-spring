@@ -1,0 +1,102 @@
+/* 全局字体设置为 JetBrains Mono */
+.CodeMirror {
+    font-family: "JetBrains Mono", "Fira Code", Consolas, Menlo, Monaco, monospace;
+    font-size: 14px; /* IDEA 默认字号 */
+    line-height: 1.5; /* 行距 */
+}
+
+/* 代码块字体 */
+.md-fences,
+code,
+tt {
+    font-family: "JetBrains Mono", "Fira Code", Consolas, Menlo, Monaco, monospace;
+    font-size: 14px;
+    background-color: #2B2B2B;
+    color: #A9B7C6;
+    border-radius: 3px;
+    padding: 4px;
+}
+
+/* 代码块样式优化 */
+.CodeMirror-line .cm-number { color: #6897BB; } /* 数字 */
+.CodeMirror-line .cm-property { color: #9876AA; } /* 属性 */
+.CodeMirror-line .cm-variable-3 { color: #FFC66D; } /* 变量类型 */
+.CodeMirror-line .cm-qualifier { color: #A9B7C6; } /* 限定符 */
+.CodeMirror-line .cm-variable-2 { color: #A9B7C6; } /* 变量 */
+.CodeMirror-line .cm-meta { color: #BBB529; } /* 头文件/宏定义 */
+.CodeMirror-line .cm-atom { color: #CC7832; } /* 布尔值 true/false */
+.CodeMirror-line .cm-keyword { color: #CC7832; } /* 关键字 */
+.CodeMirror-line .cm-def { color: #FFC66D; } /* 函数定义 */
+.CodeMirror-line .cm-variable { color: #A9B7C6; } /* 变量 */
+.CodeMirror-line .cm-builtin { color: #E8BF6A; } /* 内置函数 */
+.CodeMirror-line .cm-comment { color: #808080; } /* 注释 */
+.CodeMirror-line .cm-string { color: #6A8759; } /* 字符串 */
+.CodeMirror-line .cm-string-2 { color: #629755; } /* 特殊字符串 */
+.CodeMirror-line .cm-operator { color: #CC7832; } /* 操作符 */
+.CodeMirror div.CodeMirror-cursor { border-left: 1px solid #FFFFFF; z-index: 3; }
+.CodeMirror-selected, .CodeMirror-selectedtext { background: #214283 !important; } /* 选中背景 */
+
+
+/* 代码块背景 */
+.md-fences,
+code,
+tt {
+    background-color: #2B2B2B;
+    color: #A9B7C6;
+    border-radius: 3px;
+    padding: 4px;
+    font-size: 0.9em;
+}
+
+/* 任务列表 */
+.md-task-list-item > input { margin-left: -1.3em; }
+
+/* 代码块样式 */
+#write .md-fences:not([mermaid-type]) {
+    padding-top: 7px;
+    border-radius: 10px;
+    background-color: #2B2B2B;
+    color: #A9B7C6;
+}
+
+/* 代码块标题栏的小圆点 */
+/*#write .md-fences:before {
+    content: "";
+    z-index: 4;
+    display: block;
+    position: absolute;
+    top: 7px;
+    left: 13px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    float: left;
+    background-color: #E06C75;
+}
+#write .CodeMirror-scroll:before {
+    content: "";
+    display: block;
+    position: absolute;
+    top: 0px;
+    left: 29px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    float: left;
+    z-index: 999;
+    background-color: #E5C07B;
+}
+#write .md-fences::after {
+    content: "";
+    z-index: 4;
+    display: block;
+    position: absolute;
+    top: 7px;
+    left: 53px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    float: left;
+    background-color: #98C379;
+}
+*/
