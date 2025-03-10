@@ -46,3 +46,6 @@ customize:
         url: jdbc:clickhouse://${base-ip}:18123
         username: default
         password: Nader@123
+logging:
+  level:
+    root: trace

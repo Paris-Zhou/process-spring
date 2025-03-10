@@ -24,8 +24,6 @@ public SpringApplication(ResourceLoader resourceLoader, Class<?>... primarySourc
 
 ### 1.1 判断web应用类型
 
-
-
 ```java
 	this.webApplicationType = WebApplicationType.deduceFromClasspath();
 	private static final String[] SERVLET_INDICATOR_CLASSES = { "javax.servlet.Servlet",
@@ -148,9 +146,7 @@ public SpringApplication(ResourceLoader resourceLoader, Class<?>... primarySourc
 10 = "org.springframework.boot.env.EnvironmentPostProcessorApplicationListener"
 ```
 
-
-
-### 2. 调用 run 方法
+## 2. 调用 run 方法
 
 ### 2.1 创建BootstrapContext
 
@@ -163,8 +159,6 @@ long startTime = System.nanoTime();
 DefaultBootstrapContext bootstrapContext = new DefaultBootstrapContext();
 ```
 
-
-
 ### 2.2 获取监听器
 
 ```java
@@ -172,8 +166,6 @@ DefaultBootstrapContext bootstrapContext = new DefaultBootstrapContext();
 // 反射创建EventPublishingRunListener对象的时候遍历之前设置的listeners然后添加到initialMulticaster的applicationListeners中
 SpringApplicationRunListeners listeners = getRunListeners(args);
 ```
-
-
 
 ### 2.3 发布开始事件
 
@@ -186,6 +178,7 @@ listeners.starting(bootstrapContext, this.mainApplicationClass);
 #### 2.3.1 监听开始事件的监听器
 
 ```java
+this.initialMulticaster.multicastEvent(new ApplicationStartingEvent(bootstrapContext, this.application, this.args));
 0 = {LoggingApplicationListener@1991}  //实例化日志系统
 1 = {BackgroundPreinitializer@1992} 
 2 = {DelegatingApplicationListener@1993} 
@@ -208,8 +201,6 @@ public LoggingSystem getLoggingSystem(ClassLoader classLoader) {
 	return null;
 }
 ```
-
-
 
 ### 2.4 准备环境
 
@@ -274,8 +265,6 @@ protected void configureEnvironment(ConfigurableEnvironment environment, String[
 }
 ```
 
-
-
 #### 2.4.3 将属性源适配到Env
 
 ```java
@@ -293,11 +282,11 @@ public static void attach(Environment environment) {
 	}
 ```
 
-
-
 #### 2.4.4 发布环境准备事件
 
 ```java
+listeners.environmentPrepared(bootstrapContext, environment);
+this.initialMulticaster.multicastEvent(new ApplicationEnvironmentPreparedEvent(bootstrapContext, this.application, this.args, environment));
 0 = {BootstrapApplicationListener@2492} 
 1 = {LoggingSystemShutdownListener@2493} 
 2 = {EnvironmentPostProcessorApplicationListener@2494} 
@@ -323,7 +312,7 @@ initializers = {LinkedHashSet@5029}  size = 10
  7 = {ServerPortInfoApplicationContextInitializer@5041} 
  8 = {PropertySourceBootstrapConfiguration@5042} 
  9 = {EnvironmentDecryptApplicationInitializer@5043} 
-后续的监听器再执行
+//后续的监听器再执行
 ```
 
 ##### 2.4.4.2 LoggingSystemShutdownListener（springcloud-context）
@@ -369,16 +358,12 @@ protected void initialize(ConfigurableEnvironment environment, ClassLoader class
 }
 ```
 
-
-
 ### 2.5 输出banner
 
 ```java
 // 打印banner
 Banner printedBanner = printBanner(environment);
 ```
-
-
 
 ### 2.6 创建上下文和ioc容器
 
@@ -418,8 +403,6 @@ beanDefinitionNames = {ArrayList@3501}  size = 5
   3 = "org.springframework.context.event.internalEventListenerProcessor"
   4 = "org.springframework.context.event.internalEventListenerFactory"
 ```
-
-
 
 #### 2.6.3 创建ioc容器
 
@@ -470,8 +453,6 @@ public GenericApplicationContext() {
 	}
 ```
 
-
-
 ### 2.7 上下文刷新前准备
 
 ```java
@@ -486,8 +467,6 @@ prepareContext(bootstrapContext, context, environment, listeners, applicationArg
     // 所以将之前配置好的Evn覆盖到上下文未配置的环境
     context.setEnvironment(environment);
 ```
-
-
 
 #### 2.7.2 后置处理相关的上下文配置（可扩展）
 
@@ -527,24 +506,31 @@ PropertySourceBootstrapConfiguration
 NacosPropertySourceLocator
 ```
 
-#### 2.7.4 发布上下文准备事件
+#### 2.7.4 发布上下文初始化完成事件
 
-```
+```java
+//发布ApplicationContextInitializedEvent
 listeners.contextPrepared(context);
+this.initialMulticaster.multicastEvent(new ApplicationContextInitializedEvent(this.application, this.args, context));
+结果 = {ArrayList@3339}  size = 2
+ 0 = {BackgroundPreinitializer@3341} 
+ 1 = {DelegatingApplicationListener@3342} 
 ```
 
 #### 2.7.5 关闭引导上下文
 
-```
+```java
+// 发布引导上下文关闭事件，
 bootstrapContext.close(context);
 ```
-
-
 
 #### 2.7.6 注册一些特殊的bean用于引导启动程序继续运行
 
 ```java
-ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
+		
+		ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
+		// 通过DefaultSingletonBeanRegistry注册单例bean，applicationArguments和printedBanner都是之前创建完成的对象，
+		// 可以直接注册到Map<String, Object> singletonObjects(一级缓存)
 		beanFactory.registerSingleton("springApplicationArguments", applicationArguments);
 		if (printedBanner != null) {
 			beanFactory.registerSingleton("springBootBanner", printedBanner);
@@ -552,48 +538,128 @@ ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
 		if (beanFactory instanceof AbstractAutowireCapableBeanFactory) {
 			((AbstractAutowireCapableBeanFactory) beanFactory).setAllowCircularReferences(this.allowCircularReferences);
 			if (beanFactory instanceof DefaultListableBeanFactory) {
+                // 设置是否可以注册相同名称的bean，如果可以则替换，如果不可以则报错
 				((DefaultListableBeanFactory) beanFactory)
 					.setAllowBeanDefinitionOverriding(this.allowBeanDefinitionOverriding);
 			}
 		}
 ```
 
-
-
 #### 2.7.7 添加bean工厂后置处理器
 
 ```java
+		// 让Spring 以懒加载（lazy initialization）方式初始化 Bean，提高应用启动速度。
 		if (this.lazyInitialization) {
 			context.addBeanFactoryPostProcessor(new LazyInitializationBeanFactoryPostProcessor());
 		}
+		// 确保 Spring 配置属性的加载顺序正确
 		context.addBeanFactoryPostProcessor(new PropertySourceOrderingBeanFactoryPostProcessor(context));
 ```
-
-
 
 #### 2.7.8 加载上下文
 
 ```java
-// 注册启动类的BeanDefinition
-load(context, sources.toArray(new Object[0]));
+	    // 加载并注册primarySources的BeanDefinition
+		Set<Object> sources = getAllSources();
+		Assert.notEmpty(sources, "Sources must not be empty");
+        load(context, sources.toArray(new Object[0]));
 ```
 
-
-
-#### 2.7.9 发布上下文加载事件
+#### 2.7.9 发布应用准备完成事件
 
 ```java
+// 发布ApplicationPreparedEvent
 listeners.contextLoaded(context);
+结果 = {ArrayList@3557}  size = 4
+// 打印启动过程中延迟的日志
+ 0 = {EnvironmentPostProcessorApplicationListener@3559} 
+// 注册单例对象，都是之前创建的关于日志的对象
+ 1 = {LoggingApplicationListener@3560} 
+ 2 = {BackgroundPreinitializer@3341} 
+ 3 = {DelegatingApplicationListener@3342} 
 ```
-
-
 
 ### 2.8 刷新上下文
 
 ```java
-// *刷新上下文
-refreshContext(context);
+    // *刷新上下文
+    refreshContext(context);
+	
+	private void refreshContext(ConfigurableApplicationContext context) {
+        	// 注册上下文关闭钩子函数
+		if (this.registerShutdownHook) {
+			shutdownHook.registerApplicationContext(context);
+		}
+		refresh(context);
+	}
 ```
+
+2.8.1 创建启动步骤
+
+```java
+    // 标记上下文刷新开始
+    StartupStep contextRefresh = this.applicationStartup.start("spring.context.refresh");
+```
+
+2.8.2 准备刷新（可扩展）
+
+```java
+    // Prepare this context for refreshing.
+    prepareRefresh();
+```
+
+2.8.2.1 AnnotationConfigServletWebServerApplicationContext
+
+```java
+	protected void prepareRefresh() {
+		// 删除ClassPathBeanDefinitionScanner缓存的元数据
+		this.scanner.clearCache();
+		super.prepareRefresh();
+	}
+```
+
+2.8.2.2 AbstractApplicationContext
+
+```java
+    protected void prepareRefresh() {
+		// Switch to active.
+		this.startupDate = System.currentTimeMillis();
+		this.closed.set(false);
+		this.active.set(true);
+
+		if (logger.isDebugEnabled()) {
+			if (logger.isTraceEnabled()) {
+				logger.trace("Refreshing " + this);
+			}
+			else {
+				logger.debug("Refreshing " + getDisplayName());
+			}
+		}
+
+		// Initialize any placeholder property sources in the context environment.
+		initPropertySources();
+
+		// Validate that all properties marked as required are resolvable:
+		// see ConfigurablePropertyResolver#setRequiredProperties
+		getEnvironment().validateRequiredProperties();
+
+		// Store pre-refresh ApplicationListeners...
+		if (this.earlyApplicationListeners == null) {
+			this.earlyApplicationListeners = new LinkedHashSet<>(this.applicationListeners);
+		}
+		else {
+			// Reset local application listeners to pre-refresh state.
+			this.applicationListeners.clear();
+			this.applicationListeners.addAll(this.earlyApplicationListeners);
+		}
+
+		// Allow for the collection of early ApplicationEvents,
+		// to be published once the multicaster is available...
+		this.earlyApplicationEvents = new LinkedHashSet<>();
+	}
+```
+
+
 
 ### 2.9 刷新后执行
 
@@ -625,4 +691,3 @@ listeners.started(context, timeTakenToStartup);
 // 在项目启动时可执行操作的扩展方式
 callRunners(context, applicationArguments);
 ```
-
