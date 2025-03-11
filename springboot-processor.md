@@ -594,21 +594,25 @@ listeners.contextLoaded(context);
 	}
 ```
 
-2.8.1 创建启动步骤
+#### 2.8.1 创建启动步骤
 
 ```java
     // 标记上下文刷新开始
+    // 用于收集应用启动过程中的性能数据，帮助分析 refresh() 过程中各个阶段的耗时情况。
+    // 使用 BufferingApplicationStartup（适合开发调试,步骤分析）
+ 	// new SpringApplication(xxx.class).setApplicationStartup(new BufferingApplicationStartup(1000));
+    // 使用 FlightRecorderApplicationStartup（适合生产环境）
     StartupStep contextRefresh = this.applicationStartup.start("spring.context.refresh");
 ```
 
-2.8.2 准备刷新（可扩展）
+#### 2.8.2 准备刷新
 
 ```java
     // Prepare this context for refreshing.
     prepareRefresh();
 ```
 
-2.8.2.1 AnnotationConfigServletWebServerApplicationContext
+##### 2.8.2.1 AnnotationConfigServletWebServerApplicationContext
 
 ```java
 	protected void prepareRefresh() {
@@ -618,25 +622,14 @@ listeners.contextLoaded(context);
 	}
 ```
 
-2.8.2.2 AbstractApplicationContext
+##### 2.8.2.2 AbstractApplicationContext
 
 ```java
     protected void prepareRefresh() {
-		// Switch to active.
-		this.startupDate = System.currentTimeMillis();
-		this.closed.set(false);
-		this.active.set(true);
-
-		if (logger.isDebugEnabled()) {
-			if (logger.isTraceEnabled()) {
-				logger.trace("Refreshing " + this);
-			}
-			else {
-				logger.debug("Refreshing " + getDisplayName());
-			}
-		}
-
+		...
 		// Initialize any placeholder property sources in the context environment.
+            // 在GenericWebApplicationContext中servelet上下文还没创建，所以不能进行PropertySources占位符的替换
+            // 后续会在onRefresh()方法执行时创建servlet上下文,再次替换PropertySources的占位符
 		initPropertySources();
 
 		// Validate that all properties marked as required are resolvable:
@@ -644,6 +637,8 @@ listeners.contextLoaded(context);
 		getEnvironment().validateRequiredProperties();
 
 		// Store pre-refresh ApplicationListeners...
+        // 确保 refresh() 过程中不会丢失早期监听器（比如 ApplicationListener 被动态修改时）
+        // 当 refresh() 失败时，可以恢复 applicationListeners 到原始状态。
 		if (this.earlyApplicationListeners == null) {
 			this.earlyApplicationListeners = new LinkedHashSet<>(this.applicationListeners);
 		}
@@ -655,8 +650,116 @@ listeners.contextLoaded(context);
 
 		// Allow for the collection of early ApplicationEvents,
 		// to be published once the multicaster is available...
+        // 存储 Spring 容器初始化早期触发的事件（ApplicationEvent）,这些事件不能立刻广播，
+        // 因为此时 ApplicationEventMulticaster（事件广播器）还没有初始化,等 initApplicationEventMulticaster() 执行完，再统一发布
 		this.earlyApplicationEvents = new LinkedHashSet<>();
 	}
+```
+
+#### 2.8.3 获取新鲜的bean工厂
+
+```java
+// 之前在创建上下文的时候已经创建过bean工厂，现在刷新bean工厂，设置工厂id，然后返回bean工厂
+ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
+```
+
+#### 2.8.4 准备bean工厂
+
+```java
+// 设置ioc容器关键属性
+// 注册关键的BeanPostProcessor
+prepareBeanFactory(beanFactory);
+```
+
+##### 2.8.4.1 配置 BeanFactory 的基本属性
+
+```java
+// 设置 BeanFactory 使用 ApplicationContext 的类加载器
+// 让 BeanFactory 使用 ApplicationContext 的类加载器，确保能正确加载类（如 @Component 扫描的 Bean）。
+beanFactory.setBeanClassLoader(getClassLoader());
+
+// 如果 SpEL 允许，则设置 Bean 表达式解析器
+// 让 @Value("#{systemProperties['user.name']}") 这种 SpEL 语法生效。
+// 仅当 shouldIgnoreSpel == false 时启用。
+if (!shouldIgnoreSpel) {
+    beanFactory.setBeanExpressionResolver(new StandardBeanExpressionResolver(beanFactory.getBeanClassLoader()));
+}
+
+// 添加 PropertyEditorRegistrar，解析 `@Value("${}")` 这样的属性
+beanFactory.addPropertyEditorRegistrar(new ResourceEditorRegistrar(this, getEnvironment()));
+
+```
+
+##### 2.8.4.2 处理 Aware回调接口
+
+```java
+// 添加 ApplicationContext 相关的 BeanPostProcessor
+// 处理实现了 ApplicationContextAware、ResourceLoaderAware、EnvironmentAware 等接口的 Bean，使其能获取 ApplicationContext 的信息。
+beanFactory.addBeanPostProcessor(new ApplicationContextAwareProcessor(this));
+
+// 忽略某些依赖接口，防止自动注入
+// Spring 规定：ignoreDependencyInterface 的接口不会通过 @Autowired 自动注入，而是由 ApplicationContext 处理。
+// 例如，ApplicationContextAware 不会通过 @Autowired 注入，而是由 ApplicationContextAwareProcessor 处理。
+beanFactory.ignoreDependencyInterface(EnvironmentAware.class);
+beanFactory.ignoreDependencyInterface(EmbeddedValueResolverAware.class);
+beanFactory.ignoreDependencyInterface(ResourceLoaderAware.class);
+beanFactory.ignoreDependencyInterface(ApplicationEventPublisherAware.class);
+beanFactory.ignoreDependencyInterface(MessageSourceAware.class);
+beanFactory.ignoreDependencyInterface(ApplicationContextAware.class);
+beanFactory.ignoreDependencyInterface(ApplicationStartupAware.class);
+
+```
+
+##### 2.8.4.3 注册 ResolvableDependency（可解析依赖项）
+
+```java
+// 允许在 Bean 中 `@Autowired` 注入这些类型
+beanFactory.registerResolvableDependency(BeanFactory.class, beanFactory); // 允许 Bean 直接注入 BeanFactory
+beanFactory.registerResolvableDependency(ResourceLoader.class, this); // ApplicationContext 也是 ResourceLoader，可以加载资源。
+beanFactory.registerResolvableDependency(ApplicationEventPublisher.class, this);// 让 Bean 可以发布事件
+beanFactory.registerResolvableDependency(ApplicationContext.class, this);// 让 Bean 可以直接 @Autowired 注入 ApplicationContext获取上下文信息
+
+```
+
+##### 2.8.4.4 处理ApplicationListener和 LoadTimeWeaver
+
+```java
+// 添加监听器探测器
+// 负责检测 ApplicationListener 类型的 Bean，在 refresh() 时自动注册为事件监听器。
+beanFactory.addBeanPostProcessor(new ApplicationListenerDetector(this));
+
+// 处理 LoadTimeWeaver
+// 如果 Spring 发现 LoadTimeWeaver（JVM 运行时增强机制），它会注册 LoadTimeWeaverAwareProcessor 来处理类加载时的字节码增强。
+if (!NativeDetector.inNativeImage() && beanFactory.containsBean(LOAD_TIME_WEAVER_BEAN_NAME)) {
+    beanFactory.addBeanPostProcessor(new LoadTimeWeaverAwareProcessor(beanFactory));
+    beanFactory.setTempClassLoader(new ContextTypeMatchClassLoader(beanFactory.getBeanClassLoader()));
+}
+
+```
+
+##### 2.8.4.5 注册环境相关的默认 Bean
+
+```java
+// 注册 `environment` Bean
+if (!beanFactory.containsLocalBean(ENVIRONMENT_BEAN_NAME)) {
+    beanFactory.registerSingleton(ENVIRONMENT_BEAN_NAME, getEnvironment());
+}
+
+// 注册 `systemProperties` Bean
+if (!beanFactory.containsLocalBean(SYSTEM_PROPERTIES_BEAN_NAME)) {
+    beanFactory.registerSingleton(SYSTEM_PROPERTIES_BEAN_NAME, getEnvironment().getSystemProperties());
+}
+
+// 注册 `systemEnvironment` Bean
+if (!beanFactory.containsLocalBean(SYSTEM_ENVIRONMENT_BEAN_NAME)) {
+    beanFactory.registerSingleton(SYSTEM_ENVIRONMENT_BEAN_NAME, getEnvironment().getSystemEnvironment());
+}
+
+// 注册 `applicationStartup` Bean
+if (!beanFactory.containsLocalBean(APPLICATION_STARTUP_BEAN_NAME)) {
+    beanFactory.registerSingleton(APPLICATION_STARTUP_BEAN_NAME, getApplicationStartup());
+}
+
 ```
 
 

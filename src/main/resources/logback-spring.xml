@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <springProperty scope="context" name="logging.file.path" source="logging.file.path" defaultValue="/process-spring/log"/>
+    <springProperty scope="context" name="spring.application.name" source="spring.application.name"/>
+    <!-- %d日期，%t线程名，%c类的全名，%p日志级别，%file文件名，%line行数，%m%n输出的信息 -->
+    <!--日志格式 -->
+    <property name="log.stdout.pattern" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%-5level) --- [%15.15(%thread)] %cyan(%-40.40(%logger{40})) : %highlight(%msg) %n"/>
+    <property name="log.pattern" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level --- [%15.15(%thread)] %-40.40(%logger{40}) : %msg%n"/>
+    <property name="record.pattern" value="%msg%n"/>
+    <!--字符集 -->
+    <property name="log.charset" value="UTF-8"/>
+    <!-- 控制台输出配置 -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${log.stdout.pattern}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 日志文件配置 -->
+    <appender name="log-error" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!--日志文件输出的文件名-->
+            <FileNamePattern>
+                ${logging.file.path}/${spring.application.name}/error/%d{yyyy-MM-dd}/%d{yyyy-MM-dd}.%i.log.gz
+            </FileNamePattern>
+            <!-- 日志文件最大尺寸 -->
+            <maxFileSize>100MB</maxFileSize>
+            <!--日志文件保留天数-->
+            <MaxHistory>60</MaxHistory>
+            <!-- 总大小 -->
+            <totalSizeCap>20GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder>
+            <pattern>${log.pattern}</pattern>
+            <charset>${log.charset}</charset>
+        </encoder>
+    </appender>
+    <!-- 日志文件配置 -->
+    <appender name="log-info" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!--日志文件输出的文件名-->
+            <FileNamePattern>
+                ${logging.file.path}/${spring.application.name}/info/%d{yyyy-MM-dd}/%d{yyyy-MM-dd}.%i.log.gz
+            </FileNamePattern>
+            <!-- 日志文件最大尺寸 -->
+            <maxFileSize>100MB</maxFileSize>
+            <!--日志文件保留天数-->
+            <MaxHistory>60</MaxHistory>
+            <!-- 总大小 -->
+            <totalSizeCap>20GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder>
+            <pattern>${log.pattern}</pattern>
+            <charset>${log.charset}</charset>
+        </encoder>
+    </appender>
+
+<!--    <appender name="baiyun" class="ch.qos.logback.core.rolling.RollingFileAppender">-->
+<!--        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">-->
+<!--            &lt;!&ndash;日志文件输出的文件名&ndash;&gt;-->
+<!--            <FileNamePattern>-->
+<!--                ${logging.file.path}/${spring.application.name}/baiyun/%d{yyyy-MM-dd}/%d{yyyy-MM-dd}.%i.json.zip-->
+<!--            </FileNamePattern>-->
+<!--            &lt;!&ndash; 日志文件最大尺寸 &ndash;&gt;-->
+<!--            <maxFileSize>100MB</maxFileSize>-->
+<!--            &lt;!&ndash;日志文件保留天数&ndash;&gt;-->
+<!--            <MaxHistory>60</MaxHistory>-->
+<!--            &lt;!&ndash; 总大小 &ndash;&gt;-->
+<!--            <totalSizeCap>20GB</totalSizeCap>-->
+<!--            <cleanHistoryOnStart>true</cleanHistoryOnStart>-->
+<!--        </rollingPolicy>-->
+<!--        <filter class="com.liangxin.gateway.push.config.BaiYunMessageFilter">-->
+<!--            <level>IN-OUT,50000</level>-->
+<!--            <onMatch>ACCEPT</onMatch>-->
+<!--            <onMismatch>DENY</onMismatch>-->
+<!--        </filter>-->
+<!--        <encoder>-->
+<!--            <pattern>${record.pattern}</pattern>-->
+<!--            <charset>${log.charset}</charset>-->
+<!--        </encoder>-->
+<!--    </appender>-->
+<!--    &lt;!&ndash; 定义AsyncAppender，并将RollingFileAppender作为其关联Appender &ndash;&gt;-->
+<!--    <appender name="async" class="ch.qos.logback.classic.AsyncAppender">-->
+<!--        <queueSize>1024</queueSize>-->
+<!--        <discardingThreshold>0</discardingThreshold>-->
+<!--        <appender-ref ref="baiyun" />-->
+<!--    </appender>-->
+    <!-- 定义日志输出的package包名 -->
+    <root level="info">
+        <appender-ref ref="STDOUT" />
+        <appender-ref ref="log-info"/>
+        <appender-ref ref="log-error"/>
+    </root>
+<!--    <logger name="com.liangxin.gateway.push.service.MessageFileService" additivity="false" level="debug">-->
+<!--        <appender-ref ref="async"/>-->
+<!--    </logger>-->
+</configuration>
