@@ -395,13 +395,18 @@ public AnnotationConfigServletWebServerApplicationContext() {
 // BeanDefinitionRegistry：用于注册bean定义信息的接口，ioc容器实现此接口，上下文也实现此接口。
 // BeanDefinitionReader： 用于读取bean定义信息的接口，持有一个BeanDefinitionRegistry，有两个实现类Xml和properties用于读取两种配置的bean定义信息
 // ClassPathBeanDefinitionScanner：用于扫描类路径下bean定义信息的类，持有一个BeanDefinitionRegistry，扫描完成后使用Registry注册BeanDefinition到ioc容器
-// 一个特殊的BeanDefinitionReader，没有实现BeanDefinitionReader接口，在构造器里面通过	    AnnotationConfigUtils.registerAnnotationConfigProcessors(this.registry);注册了五个bean定义信息
+// 一个特殊的BeanDefinitionReader，没有实现BeanDefinitionReader接口，在构造器里面通过	    
+// AnnotationConfigUtils.registerAnnotationConfigProcessors(this.registry);注册了五个bean定义信息
+// ConfigurationClassPostProcessor实现了BeanDefinitionRegistryPostProcessor接口，
+// 会在刷新上下文时，执行invokeBeanFactoryPostProcessors(beanFactory);注册bean定义信息
+// myabtis的@MapperScan也会注册一个MapperScannerConfigurer类的bean定义信息，它也实现了BeanDefinitionRegistryPostProcessor接口，扫描包路径下的所有mapper
+// 如果引入springdata-jpa依赖，还会注册"org.springframework.orm.jpa.support.PersistenceAnnotationBeanPostProcessor"
 beanDefinitionNames = {ArrayList@3501}  size = 5
-  0 = "org.springframework.context.annotation.internalConfigurationAnnotationProcessor"
-  1 = "org.springframework.context.annotation.internalAutowiredAnnotationProcessor"
-  2 = "org.springframework.context.annotation.internalCommonAnnotationProcessor"
-  3 = "org.springframework.context.event.internalEventListenerProcessor"
-  4 = "org.springframework.context.event.internalEventListenerFactory"
+  0 = "org.springframework.context.annotation.internalConfigurationAnnotationProcessor" ConfigurationClassPostProcessor
+  1 = "org.springframework.context.annotation.internalAutowiredAnnotationProcessor" AutowiredAnnotationBeanPostProcessor
+  2 = "org.springframework.context.annotation.internalCommonAnnotationProcessor" CommonAnnotationBeanPostProcessor  @PostConstruct @PreDestroy
+  3 = "org.springframework.context.event.internalEventListenerProcessor" EventListenerMethodProcessor
+  4 = "org.springframework.context.event.internalEventListenerFactory" DefaultEventListenerFactory
 ```
 
 #### 2.6.3 创建ioc容器
@@ -685,7 +690,7 @@ if (!shouldIgnoreSpel) {
     beanFactory.setBeanExpressionResolver(new StandardBeanExpressionResolver(beanFactory.getBeanClassLoader()));
 }
 
-// 添加 PropertyEditorRegistrar，解析 `@Value("${}")` 这样的属性
+// 添加 PropertyEditorRegistrar，将字符串路径转换为 Resource 对象, 使用@Value("classpath:application.yml")注入资源
 beanFactory.addPropertyEditorRegistrar(new ResourceEditorRegistrar(this, getEnvironment()));
 
 ```
